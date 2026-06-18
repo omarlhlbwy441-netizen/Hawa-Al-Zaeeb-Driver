@@ -1,25 +1,31 @@
 from langchain_openai import ChatOpenAI
 from langchain.agents import initialize_agent, Tool, AgentType
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings
 import os
 
-os.environ["OPENAI_API_KEY"] = "your-openai-api-key-here"
+# تهيئة قاعدة البيانات المتجهية
+embeddings = OpenAIEmbeddings()
+db = Chroma(persist_directory="services/ai_engine/vector_store", embedding_function=embeddings)
 
-def check_order_status(order_id_str: str) -> str:
-    try:
-        order_id = int(order_id_str)
-        return f"الطلب رقم {order_id} قيد التجهيز (Processing) وسيتم شحنه قريباً."
-    except Exception:
-        return "عذراً، لم أتمكن من العثور على هذا الطلب، يرجى التأكد من الرقم."
+def search_knowledge_base(query: str) -> str:
+    '''أداة للبحث في وثائق النظام والمعرفة الخاصة'''
+    docs = db.similarity_search(query, k=2)
+    return "\n".join([doc.page_content for doc in docs])
 
-def build_customer_service_agent():
-    llm = ChatOpenAI(temperature=0.3, model="gpt-4")
+def build_advanced_agent():
+    llm = ChatOpenAI(temperature=0, model="gpt-4")
+    
     tools = [
         Tool(
-            name="CheckOrderStatus",
-            func=check_order_status,
-            description="استخدم هذه الأداة عندما يسأل العميل عن حالة طلبه. يجب تمرير رقم الطلب."
+            name="KnowledgeBaseSearch",
+            func=search_knowledge_base,
+            description="استخدم هذه الأداة للبحث عن معلومات حول سياسات الشركة، المنتجات، أو الدعم الفني."
         )
     ]
-    return initialize_agent(tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True)
+    
+    return initialize_agent(
+        tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True
+    )
 
-agent_executor = build_customer_service_agent()
+agent_executor = build_advanced_agent()

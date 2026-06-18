@@ -1,0 +1,22 @@
+
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./services/api_gateway
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./clients/web_dashboard
+    ports:
+      - "3000:3000"
